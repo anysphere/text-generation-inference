@@ -117,8 +117,7 @@ def run_experiment(model: FlashLlama, cache: Cache, num_batches = 1, prompt_len=
 
     print('Warming up...')
     if first:
-        for _ in range(3):
-            generator.warmup(sentence)
+        generator.warmup(sentence)
 
     print('Decoding...')
     for generations in generator.decode(sentence):
