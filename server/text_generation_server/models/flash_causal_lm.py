@@ -114,7 +114,7 @@ class CacheManager:
 @dataclass
 class FlashCausalLMBatch(Batch):
     batch_id: int
-    requests: List[generate_pb2.Request | None]
+    requests: List[Union[generate_pb2.Request, None]]
     # request id -> idx in list mapping
     requests_idx_mapping: Dict[int, int]
 
