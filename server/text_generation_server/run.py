@@ -105,7 +105,7 @@ class FlashLlamaGenerator:
         self.model.warmup(batch, max_total_tokens=1024)
 
 
-def run_experiment(model: FlashLlama, cache: Cache, num_batches = 1, prompt_len=512, gen_size=64):
+def run_experiment(model: FlashLlama, cache: Cache, num_batches = 1, prompt_len=512, gen_size=64, first=False):
 
     generator = FlashLlamaGenerator(
         model=model,
@@ -116,7 +116,9 @@ def run_experiment(model: FlashLlama, cache: Cache, num_batches = 1, prompt_len=
     )
 
     print('Warming up...')
-    generator.warmup(sentence)
+    if first:
+        for _ in range(3):
+            generator.warmup(sentence)
 
     print('Decoding...')
     for generations in generator.decode(sentence):
@@ -144,7 +146,7 @@ def main():
         prompt_len = int(input('prompt_len: '))
         gen_size = int(input('gen_size: '))
 
-        for batch_size in 1, 2, 4, 8:
+        for i, batch_size in enumerate([1, 2, 4, 8]):
             print(f'batch_size: {batch_size}')
             run_experiment(
                 model=model,
@@ -152,6 +154,7 @@ def main():
                 num_batches=batch_size,
                 prompt_len=prompt_len,
                 gen_size=gen_size,
+                first = i == 0,
             )
 
 main()
