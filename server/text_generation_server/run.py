@@ -142,23 +142,25 @@ def main():
     cache = Cache()
 
     while True:
-        if (torch.distributed.get_rank() == 0):
-            prompt_len = int(input('prompt_len: '))
-            gen_size = int(input('gen_size: '))
-            data = torch.tensor([prompt_len, gen_size], device='cuda')
-        else:
-            data = torch.zeros(2, device='cuda')
+        # if (torch.distributed.get_rank() == 0):
+        #     prompt_len = int(input('prompt_len: '))
+        #     gen_size = int(input('gen_size: '))
+        #     data = torch.tensor([prompt_len, gen_size], device='cuda')
+        # else:
+        #     data = torch.zeros(2, device='cuda')
 
-        torch.distributed.barrier() 
-        torch.distributed.broadcast(data, 0)
+        # torch.distributed.barrier() 
+        # torch.distributed.broadcast(data, 0)
 
-        prompt_len = int(data[0].item())
-        gen_size = int(data[1].item())
+        # prompt_len = int(data[0].item())
+        # gen_size = int(data[1].item())
 
-        print(f'prompt_len: {prompt_len}')
-        print(f'gen_size: {gen_size}')
+        # print(f'prompt_len: {prompt_len}')
+        # print(f'gen_size: {gen_size}')
+        prompt_len = 512
+        gen_size = 64
 
-        for i, batch_size in enumerate([1, 2, 4]):
+        for i, batch_size in enumerate([2, 1, 2, 4]):
             print(f'batch_size: {batch_size}')
             run_experiment(
                 model=model,
