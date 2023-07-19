@@ -81,15 +81,17 @@ class FlashLlamaGenerator:
         start = time.time()
         num_tokens = 0
         while batch:
+            generations, batch = self.model.generate_token(batch)
+            print('got generations', generations)
+            print('got batch', batch)
+
             num_tokens += 1
             if first:
                 first = False
                 print('Time to first token!', time.time() - start)
                 start = time.time()
-            else:
-                self.cache.set(batch)
 
-            generations, batch = self.model.generate_token(batch)
+            self.cache.set(batch)
             yield generations
 
         print(f'Time to gen {num_tokens} tokens!', time.time() - start)
@@ -100,7 +102,7 @@ class FlashLlamaGenerator:
         self.model.warmup(batch, max_total_tokens=1024)
 
 
-def main(num_batches = 1, prompt_len=512, gen_size=64):
+def main(num_batches = 1, prompt_len=64, gen_size=64):
     model = FlashLlama(
         model_id=model_id,
         quantize=quantize,
