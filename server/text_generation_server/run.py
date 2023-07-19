@@ -102,7 +102,7 @@ class FlashLlamaGenerator:
 
     def warmup(self, sentence):
         batch = self.full_get_batch(sentence)
-        self.model.warmup(batch, max_total_tokens=1024)
+        self.model.warmup(batch, max_total_tokens=4096)
 
 
 def run_experiment(model: FlashLlama, cache: Cache, num_batches = 1, prompt_len=512, gen_size=64, first=False):
