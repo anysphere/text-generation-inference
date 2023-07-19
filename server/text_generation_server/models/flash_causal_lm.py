@@ -214,7 +214,6 @@ class FlashCausalLMBatch(Batch):
         prefill_next_token_indices = []
         prefill_cu_outlens = [0]
 
-        next_token_chooser_parameters = []
         stopping_criterias = []
 
         # Cumulative length
@@ -251,7 +250,6 @@ class FlashCausalLMBatch(Batch):
             # Add cumulative lengths of all previous inputs
             cu_seqlen_prefill.append(cumulative_length + input_length)
 
-            next_token_chooser_parameters.append(r.parameters)
 
             stopping_criteria = StoppingCriteria(
                 tokenizer.eos_token_id, [], max_new_tokens
