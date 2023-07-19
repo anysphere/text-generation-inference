@@ -101,7 +101,7 @@ class FlashLlamaGenerator:
 
 def main(num_batches = 1, prompt_len=512, gen_size=64):
     model = FlashLlama(
-        model_id=path_to_model,
+        model_id=model_id,
         quantize=quantize,
         dtype=dtype,
         trust_remote_code=True,
