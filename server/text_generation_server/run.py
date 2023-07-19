@@ -20,7 +20,7 @@ import os
 
 
 model_id = 'meta-llama/Llama-2-70b-hf'
-model_id = 'meta-llama/Llama-2-7b-hf'
+# model_id = 'meta-llama/Llama-2-7b-hf'
 path_to_model=''
 shared = True
 quantize = None
