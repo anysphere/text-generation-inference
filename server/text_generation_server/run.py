@@ -105,7 +105,7 @@ class FlashLlamaGenerator:
         self.model.warmup(batch, max_total_tokens=1024)
 
 
-def main(num_batches = 1, prompt_len=64, gen_size=2):
+def main(num_batches = 1, prompt_len=64, gen_size=64):
     model = FlashLlama(
         model_id=model_id,
         quantize=quantize,
@@ -132,7 +132,10 @@ def main(num_batches = 1, prompt_len=64, gen_size=2):
     for generations in generator.decode(sentence):
         if len(generations) != 0:
             first = generations[0]
-            print(first.generated_text, end='')
+            print(first.generated_text.text, end='')
+
+    print()
+
 
 
 main()
