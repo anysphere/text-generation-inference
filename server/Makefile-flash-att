@@ -2,6 +2,8 @@ flash_att_commit := 3a9bfd076f98746c73362328958dbc68d145fbec
 
 flash-attention:
     # Clone flash attention
+	whereis python
+	whereis pip
 	pip install packaging
 	git clone https://github.com/HazyResearch/flash-attention.git
 
