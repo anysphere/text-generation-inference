@@ -150,6 +150,7 @@ def main():
         else:
             data = torch.zeros(2)
 
+        torch.distributed.barrier() 
         torch.distributed.broadcast(data, 0)
 
         prompt_len = int(data[0])
