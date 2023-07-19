@@ -156,6 +156,9 @@ def main():
         prompt_len = int(data[0].item())
         gen_size = int(data[1].item())
 
+        print(f'prompt_len: {prompt_len}')
+        print(f'gen_size: {gen_size}')
+
         for i, batch_size in enumerate([1, 2, 4]):
             print(f'batch_size: {batch_size}')
             run_experiment(
