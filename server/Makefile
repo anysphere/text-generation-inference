@@ -1,4 +1,4 @@
-include server/Makefile-flash-att
+include Makefile-flash-att
 include Makefile-flash-att-v2
 include Makefile-vllm
 
@@ -27,4 +27,4 @@ run-dev:
 	SAFETENSORS_FAST_GPU=1 /opt/miniconda/bin/python -m torch.distributed.run --nproc_per_node=2 text_generation_server/cli.py serve bigscience/bloom-560m --sharded
 
 export-requirements:
-	/opt/miniconda/bin/python -m poetry export -o requirements.txt -E bnb --without-hashes
+	/opt/miniconda/bin/poetry export -o requirements.txt -E bnb --without-hashes
