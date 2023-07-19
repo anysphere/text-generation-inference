@@ -228,13 +228,13 @@ class FlashCausalLMBatch(Batch):
         max_blocks = 0
 
         # Parse batch
-        for i, (r, tokenized_input) in enumerate(
+        for i, (sentence, tokenized_input) in enumerate(
             zip(sentences, batch_tokenized_inputs)
         ):
             # Dummy mapping instead
             requests_idx_mapping[0] = i
 
-            tokenized_input = tokenized_input[-r.truncate :]
+            tokenized_input = tokenized_input
 
             input_length = len(tokenized_input)
             input_lengths.append(input_length)
@@ -301,8 +301,10 @@ class FlashCausalLMBatch(Batch):
             max_blocks = max(max_blocks, needed_blocks)
             max_length = max(max_length, input_length + max_new_tokens)
 
-        next_token_chooser = HeterogeneousNextTokenChooser.from_pb(
-            next_token_chooser_parameters, dtype, device
+        next_token_chooser = HeterogeneousNextTokenChooser.from_values(
+            dtype,
+            device,
+            len(sentences),
         )
         start_slots = torch.tensor(start_slots, dtype=torch.int64)
 

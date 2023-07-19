@@ -1,4 +1,5 @@
 import re
+import random
 import torch
 
 from transformers import (
@@ -275,6 +276,33 @@ class HeterogeneousNextTokenChooser:
             typical_p=[pb_.typical_p for pb_ in pb],
             do_sample=[pb_.do_sample for pb_ in pb],
             seeds=[pb_.seed for pb_ in pb],
+            device=device,
+            dtype=dtype,
+        )
+
+    @classmethod
+    def from_values(
+        cls,
+        dtype: torch.dtype,
+        device: torch.device,
+        bsize: int,
+        watermark = False,
+        repetition_penalty = 0.0,
+        temperature = 1.0,
+        top_p = 1.0,
+        top_k = 0,
+        typical_p = 1.0,
+        do_sample = True,
+    ) -> "HeterogeneousNextTokenChooser":
+        return HeterogeneousNextTokenChooser(
+            watermark=[watermark]*bsize,
+            temperature=[temperature]*bsize,
+            repetition_penalty=[repetition_penalty]*bsize,
+            top_k=[top_k]*bsize,
+            top_p=[top_p]*bsize,
+            typical_p=[typical_p]*bsize,
+            do_sample=[do_sample]*bsize,
+            seeds=[random.randint(0, 1e6) for _ in range(bsize)],
             device=device,
             dtype=dtype,
         )
