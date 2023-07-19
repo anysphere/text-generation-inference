@@ -105,17 +105,7 @@ class FlashLlamaGenerator:
         self.model.warmup(batch, max_total_tokens=1024)
 
 
-def run_experiment(num_batches = 1, prompt_len=512, gen_size=64):
-    model = FlashLlama(
-        model_id=model_id,
-        quantize=quantize,
-        dtype=dtype,
-        trust_remote_code=True,
-    )
-    if torch.distributed.get_rank() != 0:
-        sys.stdout = open(os.devnull, "w")
-
-    cache = Cache()
+def run_experiment(model: FlashLlama, cache: Cache, num_batches = 1, prompt_len=512, gen_size=64):
 
     generator = FlashLlamaGenerator(
         model=model,
@@ -138,5 +128,30 @@ def run_experiment(num_batches = 1, prompt_len=512, gen_size=64):
     print()
 
 
+def main():
+    model = FlashLlama(
+        model_id=model_id,
+        quantize=quantize,
+        dtype=dtype,
+        trust_remote_code=True,
+    )
+    if torch.distributed.get_rank() != 0:
+        sys.stdout = open(os.devnull, "w")
 
-run_experiment()
+    cache = Cache()
+
+    while True:
+        prompt_len = int(input('prompt_len: '))
+        gen_size = int(input('gen_size: '))
+
+        for batch_size in 1, 2, 4, 8:
+            print(f'batch_size: {batch_size}')
+            run_experiment(
+                model=model,
+                cache=cache,
+                num_batches=batch_size,
+                prompt_len=prompt_len,
+                gen_size=gen_size,
+            )
+
+main()
