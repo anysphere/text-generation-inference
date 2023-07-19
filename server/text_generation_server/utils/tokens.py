@@ -296,7 +296,7 @@ class HeterogeneousNextTokenChooser:
         repetition_penalty = 0.0,
         temperature = 1.0,
         top_p = 1.0,
-        top_k = 100,
+        top_k = 0,
         typical_p = 1.0,
         do_sample = True,
     ) -> "HeterogeneousNextTokenChooser":
