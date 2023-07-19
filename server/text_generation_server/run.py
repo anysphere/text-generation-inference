@@ -13,6 +13,13 @@ from text_generation_server.utils import StoppingCriteria, HeterogeneousNextToke
 from transformers import PreTrainedTokenizerBase
 from text_generation_server.cache import Cache
 from text_generation_server.prompt import sentence
+import sys
+import os
+
+# redirect stdout to nothing if not rank 0
+if torch.distributed.get_rank() != 0:
+    sys.stdout = open(os.devnull, "w")
+
 
 model_id = 'meta-llama/Llama-2-70b-hf'
 model_id = 'meta-llama/Llama-2-7b-hf'
