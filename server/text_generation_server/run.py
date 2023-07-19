@@ -132,7 +132,8 @@ def main(num_batches = 1, prompt_len=64, gen_size=64):
     for generations in generator.decode(sentence):
         if len(generations) != 0:
             first = generations[0]
-            print(first.generated_text.text, end='')
+            if first.generated_text != None:
+                print(first.generated_text.text, end='')
 
     print()
 
