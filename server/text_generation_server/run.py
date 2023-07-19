@@ -146,15 +146,15 @@ def main():
         if (torch.distributed.get_rank() == 0):
             prompt_len = int(input('prompt_len: '))
             gen_size = int(input('gen_size: '))
-            data = torch.tensor([prompt_len, gen_size])
+            data = torch.tensor([prompt_len, gen_size], device='cuda')
         else:
-            data = torch.zeros(2)
+            data = torch.zeros(2, device='cuda')
 
         torch.distributed.barrier() 
         torch.distributed.broadcast(data, 0)
 
-        prompt_len = int(data[0])
-        gen_size = int(data[1])
+        prompt_len = int(data[0].item())
+        gen_size = int(data[1].item())
 
         for i, batch_size in enumerate([1, 2, 4, 8]):
             print(f'batch_size: {batch_size}')
