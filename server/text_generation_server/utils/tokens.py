@@ -300,7 +300,7 @@ class HeterogeneousNextTokenChooser:
         top_p = 1.0,
         top_k = 0,
         typical_p = 1.0,
-        do_sample = False,
+        do_sample = True,
     ) -> "HeterogeneousNextTokenChooser":
         return HeterogeneousNextTokenChooser(
             watermark=[watermark]*bsize,
