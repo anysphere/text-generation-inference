@@ -1,7 +1,6 @@
 flash_att_v2_commit := 4f285b354796fb17df8636485b9a04df3ebbb7dc
-
-PYTHON_PATH := /opt/miniconda/bin/python
 PIP_PATH := /opt/miniconda/bin/pip
+PYTHON_PATH := /opt/miniconda/bin/python
 
 flash-attention-v2:
     # Clone flash attention
