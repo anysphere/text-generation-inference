@@ -231,8 +231,8 @@ class FlashCausalLMBatch(Batch):
         for i, (r, tokenized_input) in enumerate(
             zip(sentences, batch_tokenized_inputs)
         ):
-            # request id -> idx in list mapping
-            requests_idx_mapping[r.id] = i
+            # Dummy mapping instead
+            requests_idx_mapping[0] = i
 
             tokenized_input = tokenized_input[-r.truncate :]
 
