@@ -353,7 +353,7 @@ class FlashCausalLMBatch(Batch):
             )
 
         return cls(
-            batch_id=math.round(random.random()*1000),
+            batch_id=round(random.random()*1000),
             requests=[None for _ in sentences],
             requests_idx_mapping=requests_idx_mapping,
             input_ids=input_ids,
