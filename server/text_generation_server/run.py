@@ -87,8 +87,6 @@ class FlashLlamaGenerator:
         num_tokens = 0
         while batch:
             generations, batch = self.model.generate_token(batch)
-            print('got generations', generations)
-            print('got batch', batch)
 
             num_tokens += 1
             if first:
@@ -132,9 +130,9 @@ def main(num_batches = 1, prompt_len=64, gen_size=2):
 
     print('Decoding...')
     for generations in generator.decode(sentence):
-        print(generations)
-        #first = generations[0]
-        #print(first.generated_text, end='')
+        if len(generations) != 0:
+            first = generations[0]
+            print(first.generated_text, end='')
 
 
 main()
