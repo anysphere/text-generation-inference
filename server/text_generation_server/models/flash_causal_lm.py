@@ -274,25 +274,25 @@ class FlashCausalLMBatch(Batch):
             )
             slot_indices.append(request_slot_indices)
 
-            all_prefill_logprobs = all_prefill_logprobs and r.prefill_logprobs
-            no_prefill_logprobs = no_prefill_logprobs and not r.prefill_logprobs
+            all_prefill_logprobs = all_prefill_logprobs
+            no_prefill_logprobs = no_prefill_logprobs
 
-            if r.prefill_logprobs:
-                prefill_head_indices.append(request_position_ids + cumulative_length)
-                prefill_next_token_indices.append(
-                    prefill_out_cumulative_length + input_length - 1
+            # if r.prefill_logprobs:
+            #     prefill_head_indices.append(request_position_ids + cumulative_length)
+            #     prefill_next_token_indices.append(
+            #         prefill_out_cumulative_length + input_length - 1
+            #     )
+            #     prefill_cu_outlens.append(prefill_out_cumulative_length + input_length)
+            #     prefill_out_cumulative_length += input_length
+            # else:
+            prefill_head_indices.append(
+                torch.tensor(
+                    [cumulative_length + input_length - 1], dtype=torch.int32
                 )
-                prefill_cu_outlens.append(prefill_out_cumulative_length + input_length)
-                prefill_out_cumulative_length += input_length
-            else:
-                prefill_head_indices.append(
-                    torch.tensor(
-                        [cumulative_length + input_length - 1], dtype=torch.int32
-                    )
-                )
-                prefill_next_token_indices.append(prefill_out_cumulative_length)
-                prefill_cu_outlens.append(prefill_out_cumulative_length + 1)
-                prefill_out_cumulative_length += 1
+            )
+            prefill_next_token_indices.append(prefill_out_cumulative_length)
+            prefill_cu_outlens.append(prefill_out_cumulative_length + 1)
+            prefill_out_cumulative_length += 1
 
             # Update
             cumulative_length += input_length
