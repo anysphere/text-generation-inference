@@ -126,7 +126,4 @@ def main(num_batches = 1, prompt_len=512, gen_size=64):
         print(first.generated_text, end='')
 
 
-
-
-
-
+main()
