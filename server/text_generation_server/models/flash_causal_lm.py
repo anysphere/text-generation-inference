@@ -1105,7 +1105,7 @@ class FlashCausalLM(Model):
 
         # For each member of the batch
         for i, (
-            request,
+            _,
             input_length,
             prefix_offset,
             read_offset,
@@ -1153,7 +1153,7 @@ class FlashCausalLM(Model):
                     generated_text = None
 
                 # Prefill
-                if prefill and request.prefill_logprobs:
+                if prefill:
                     out_start_index = batch.prefill_cu_outlens[i]
                     out_end_index = batch.prefill_cu_outlens[i + 1]
 
@@ -1174,7 +1174,7 @@ class FlashCausalLM(Model):
                     prefill_tokens = None
 
                 generation = Generation(
-                    request.id,
+                    round(math.random() * 100),
                     prefill_tokens,
                     next_token_id,
                     next_token_logprob,
