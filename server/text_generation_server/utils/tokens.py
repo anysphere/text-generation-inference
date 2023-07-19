@@ -228,6 +228,9 @@ class HeterogeneousNextTokenChooser:
 
         for warper in self.warpers:
             scores = warper(input_ids, scores)
+            print('warper', warper)
+            print('scores', scores)
+
 
         next_ids = self.choice(scores)
         next_logprobs = torch.gather(

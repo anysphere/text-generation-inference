@@ -1006,7 +1006,7 @@ class FlashCausalLM(Model):
             batch.all_input_ids_tensor[:, : batch.max_seqlen], next_token_logits
         )
         print('next input ids', next_input_ids)
-        print('next input ids', next_token_logprobs)
+        print('next input logprobs', next_token_logprobs)
 
         if prefill:
             if len(batch) > 1 and prefill_logprobs:
