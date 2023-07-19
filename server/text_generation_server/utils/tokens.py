@@ -221,10 +221,13 @@ class HeterogeneousNextTokenChooser:
         self.device = device
 
     def __call__(self, input_ids: torch.Tensor, scores: torch.Tensor):
+        print('orig scores', scores)
         if self.watermark_processor is not None:
             scores = self.watermark_processor(input_ids, scores)
+        print('post watermark scores', scores)
         if self.repetition_processor is not None:
             scores = self.repetition_processor(input_ids, scores)
+        print('post repetition scores', scores)
 
         for warper in self.warpers:
             scores = warper(input_ids, scores)
