@@ -24,7 +24,7 @@ model_id = 'meta-llama/Llama-2-7b-hf'
 path_to_model=''
 shared = True
 quantize = None
-dtype = torch.float16
+dtype = torch.bfloat16
 
 BLOCK_SIZE = 16
 
