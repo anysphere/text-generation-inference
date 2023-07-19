@@ -236,9 +236,11 @@ class HeterogeneousNextTokenChooser:
 
 
         next_ids = self.choice(scores)
+        print('next_ids', next_ids)
         next_logprobs = torch.gather(
             torch.log_softmax(scores, -1), 1, next_ids.view(-1, 1)
         ).view(-1)
+        print('next_logprobs', next_ids)
 
         return next_ids, next_logprobs
 
@@ -298,7 +300,7 @@ class HeterogeneousNextTokenChooser:
         top_p = 1.0,
         top_k = 0,
         typical_p = 1.0,
-        do_sample = True,
+        do_sample = False,
     ) -> "HeterogeneousNextTokenChooser":
         return HeterogeneousNextTokenChooser(
             watermark=[watermark]*bsize,
@@ -308,7 +310,7 @@ class HeterogeneousNextTokenChooser:
             top_p=[top_p]*bsize,
             typical_p=[typical_p]*bsize,
             do_sample=[do_sample]*bsize,
-            seeds=[random.randint(0, 1e6) for _ in range(bsize)],
+            seeds=[0 for _ in range(bsize)],
             device=device,
             dtype=dtype,
         )
