@@ -96,7 +96,7 @@ class FlashLlamaGenerator:
 
     def warmup(self, sentence):
         batch = self.full_get_batch(sentence)
-        self.model.warmup(batch)
+        self.model.warmup(batch, max_token_tokens=500)
 
 
 def main(num_batches = 1, prompt_len=512, gen_size=64):
