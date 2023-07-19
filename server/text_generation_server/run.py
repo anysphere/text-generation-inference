@@ -17,8 +17,6 @@ import sys
 import os
 
 # redirect stdout to nothing if not rank 0
-if torch.distributed.get_rank() != 0:
-    sys.stdout = open(os.devnull, "w")
 
 
 model_id = 'meta-llama/Llama-2-70b-hf'
@@ -116,6 +114,8 @@ def main(num_batches = 1, prompt_len=64, gen_size=16):
         dtype=dtype,
         trust_remote_code=True,
     )
+    if torch.distributed.get_rank() != 0:
+        sys.stdout = open(os.devnull, "w")
 
     cache = Cache()
 
