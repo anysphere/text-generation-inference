@@ -1,6 +1,6 @@
 vllm_commit := d284b831c17f42a8ea63369a06138325f73c4cf9
-PIP_PATH := /home/azureuser/miniconda3/envs/dev/bin/pip
-PYTHON_PATH := /home/azureuser/miniconda3/envs/dev/bin/python 
+# PIP_PATH := /home/azureuser/miniconda3/envs/dev/bin/pip
+# PYTHON_PATH := /home/azureuser/miniconda3/envs/dev/bin/python 
 
 
 vllm:

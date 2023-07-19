@@ -1,6 +1,6 @@
 flash_att_commit := 3a9bfd076f98746c73362328958dbc68d145fbec
-PIP_PATH := /home/azureuser/miniconda3/envs/dev/bin/pip
-PYTHON_PATH := /home/azureuser/miniconda3/envs/dev/bin/python 
+# PIP_PATH := /home/azureuser/miniconda3/envs/dev/bin/pip
+# PYTHON_PATH := /home/azureuser/miniconda3/envs/dev/bin/python 
 
 
 flash-attention:

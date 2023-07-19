@@ -1,6 +1,6 @@
 flash_att_v2_commit := 4f285b354796fb17df8636485b9a04df3ebbb7dc
-PIP_PATH := /home/azureuser/miniconda3/envs/dev/bin/pip
-PYTHON_PATH := /home/azureuser/miniconda3/envs/dev/bin/python 
+# PIP_PATH := /home/azureuser/miniconda3/envs/dev/bin/pip
+# PYTHON_PATH := /home/azureuser/miniconda3/envs/dev/bin/python 
 
 flash-attention-v2:
     # Clone flash attention
