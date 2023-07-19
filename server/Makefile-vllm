@@ -1,4 +1,6 @@
 vllm_commit := d284b831c17f42a8ea63369a06138325f73c4cf9
+PYTHON_PATH := /opt/miniconda/bin/python
+PIP_PATH := /opt/miniconda/bin/pip
 
 vllm:
     # Clone vllm

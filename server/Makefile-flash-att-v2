@@ -3,7 +3,6 @@ PIP_PATH := /opt/miniconda/bin/pip
 PYTHON_PATH := /opt/miniconda/bin/python
 
 flash-attention-v2:
-    # Clone flash attention
 	$(PIP_PATH) install packaging
 	git clone https://github.com/HazyResearch/flash-attention.git flash-attention-v2
 
