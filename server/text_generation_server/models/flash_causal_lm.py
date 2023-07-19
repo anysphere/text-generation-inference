@@ -999,6 +999,7 @@ class FlashCausalLM(Model):
         else:
             next_token_logits = out
 
+        print('prefill', prefill)
         print('got next token logits', out)
         next_input_ids, next_token_logprobs = batch.next_token_chooser(
             batch.all_input_ids_tensor[:, : batch.max_seqlen], next_token_logits
