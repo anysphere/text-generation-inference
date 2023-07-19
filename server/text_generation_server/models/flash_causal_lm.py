@@ -1174,7 +1174,7 @@ class FlashCausalLM(Model):
                     prefill_tokens = None
 
                 generation = Generation(
-                    round(math.random() * 100),
+                    round(random.random() * 100),
                     prefill_tokens,
                     next_token_id,
                     next_token_logprob,
