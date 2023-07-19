@@ -1000,10 +1000,13 @@ class FlashCausalLM(Model):
             next_token_logits = out
 
         print('prefill', prefill)
-        print('got next token logits', out)
+        print('got out', out)
+        print('got next token logits', next_token_logits)
         next_input_ids, next_token_logprobs = batch.next_token_chooser(
             batch.all_input_ids_tensor[:, : batch.max_seqlen], next_token_logits
         )
+        print('next input ids', next_input_ids)
+        print('next input ids', next_token_logprobs)
 
         if prefill:
             if len(batch) > 1 and prefill_logprobs:
