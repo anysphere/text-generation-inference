@@ -105,7 +105,7 @@ class FlashLlamaGenerator:
         self.model.warmup(batch, max_total_tokens=1024)
 
 
-def run_experiment(num_batches = 1, prompt_len=64, gen_size=512):
+def run_experiment(num_batches = 1, prompt_len=512, gen_size=512):
     model = FlashLlama(
         model_id=model_id,
         quantize=quantize,
