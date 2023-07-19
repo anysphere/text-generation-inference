@@ -68,10 +68,8 @@ class NextTokenChooser:
 
         if self.static_warper is None:
             next_logprob = torch.log_softmax(scores, -1)
-            print('logprob!', next_logprob)
         else:
             scores, next_logprob = self.static_warper(scores)
-            print('warped logprob!', next_logprob)
 
         next_id = self.choice(scores[-1]).view(1, 1)
 
@@ -233,14 +231,10 @@ class HeterogeneousNextTokenChooser:
             scores = warper(input_ids, scores)
 
 
-        print('scores', scores)
-        print('highest', torch.topk(scores, 5, dim=-1))
         next_ids = self.choice(scores)
-        print('next_ids', next_ids)
         next_logprobs = torch.gather(
             torch.log_softmax(scores, -1), 1, next_ids.view(-1, 1)
         ).view(-1)
-        print('next_logprobs', next_logprobs)
 
         return next_ids, next_logprobs
 
