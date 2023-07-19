@@ -15,6 +15,7 @@ from text_generation_server.cache import Cache
 from text_generation_server.prompt import sentence
 
 model_id = 'meta-llama/Llama-2-70b-hf'
+model_id = 'meta-llama/Llama-2-7b-hf'
 path_to_model=''
 shared = True
 quantize = None
