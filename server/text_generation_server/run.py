@@ -53,6 +53,9 @@ class FlashLlamaGenerator:
     def __init__(self, model: FlashLlama, cache: Cache, num_batches: int, prompt_len: int, gen_size: int):
         self.model = model
         self.cache = cache
+        self.num_batches = num_batches
+        self.prompt_len = prompt_len
+        self.gen_size = gen_size
 
     def full_get_batch(self, sentence: str):
         return get_batch(
