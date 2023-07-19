@@ -44,7 +44,7 @@ def get_batch(
         num_batches=num_batches,
         prompt_len=prompt_len,
         gen_size=gen_size,
-        device_id=model.device_id,
+        device_id=model.device,
         tokenizer=model.tokenizer,
     )
 
