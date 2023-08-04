@@ -50,6 +50,7 @@ def _load_multi_mqa_gptq(
         q_tensor = slice_[:, start:stop]
         kv_tensor = slice_[:, -2 * head_size :]
         qweight = torch.cat([q_tensor, kv_tensor], dim=1)
+        qweight = qweight.to(device=weights.device)
 
         slice_ = weights._get_slice(f"{prefix}.c_attn.scales")
         shape = slice_.get_shape()
@@ -60,6 +61,7 @@ def _load_multi_mqa_gptq(
         q_tensor = slice_[:, start:stop]
         kv_tensor = slice_[:, -2 * head_size :]
         scales = torch.cat([q_tensor, kv_tensor], dim=1)
+        scales = scales.to(device=weights.device)
 
         slice_ = weights._get_slice(f"{prefix}.c_attn.qzeros")
         shape = slice_.get_shape()
@@ -70,21 +72,16 @@ def _load_multi_mqa_gptq(
         q_tensor = slice_[:, start:stop]
         kv_tensor = slice_[:, -2 * head_size * 4 // 32 :]
         qzeros = torch.cat([q_tensor, kv_tensor], dim=1)
+        qzeros = qzeros.to(device=weights.device)
 
         g_idx = weights.get_tensor(f"{prefix}.c_attn.g_idx")
-        try:
-            bits = weights.get_tensor("gptq_bits").item()
-            groupsize = weights.get_tensor("gptq_groupsize").item()
-        except SafetensorError as e:
-            try:
-                import os
+        g_idx = g_idx.to(device=weights.device)
+        bits, groupsize = weights._get_gptq_params()
 
-                bits = int(os.getenv("GPTQ_BITS"))
-                groupsize = int(os.getenv("GPTQ_GROUPSIZE"))
-            except Exception:
-                raise e
+        from text_generation_server.utils.layers import HAS_EXLLAMA
 
-        weight = (qweight, qzeros, scales, g_idx, bits, groupsize)
+        use_exllama = HAS_EXLLAMA
+        weight = (qweight, qzeros, scales, g_idx, bits, groupsize, use_exllama)
 
         if bias:
             slice_ = weights._get_slice(f"{prefix}.c_attn.bias")
@@ -97,6 +94,7 @@ def _load_multi_mqa_gptq(
             q_tensor = slice_[start:stop]
             kv_tensor = slice_[-2 * head_size :]
             bias = torch.cat([q_tensor, kv_tensor], dim=0)
+            bias = bias.to(device=weights.device)
 
         return TensorParallelColumnLinear(get_linear(weight, bias, config.quantize))
     else:
@@ -361,7 +359,6 @@ class Block(nn.Module):
         max_s,
     ):
         hidden_states, residual = self.ln_1(hidden_states, residual)
-
         hidden_states = self.attn(
             hidden_states,
             cu_seqlen_prefill,

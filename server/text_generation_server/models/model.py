@@ -3,9 +3,9 @@ import torch
 
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Optional, TypeVar, Type
-from transformers import PreTrainedTokenizerBase
+from transformers import PreTrainedTokenizerBase, PretrainedConfig
 
-from text_generation_server.models.types import Batch, GeneratedText
+from text_generation_server.models.types import Batch, Generation
 from text_generation_server.pb.generate_pb2 import InfoResponse
 
 B = TypeVar("B", bound=Batch)
@@ -22,9 +22,6 @@ class Model(ABC):
         rank: int = 0,
         world_size: int = 1,
     ):
-        if torch.cuda.is_available():
-            torch.cuda.set_per_process_memory_fraction(1.0)
-
         self.model = model.eval()
         self.tokenizer = tokenizer
         self.all_special_ids = set(tokenizer.all_special_ids)
@@ -55,11 +52,12 @@ class Model(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def generate_token(self, batch: B) -> Tuple[List[GeneratedText], Optional[B]]:
+    def generate_token(self, batch: B) -> Tuple[List[Generation], Optional[B]]:
         raise NotImplementedError
 
-    def warmup(self, batch: B, max_total_tokens: int):
+    def warmup(self, batch: B) -> Optional[int]:
         self.generate_token(batch)
+        return None
 
     def decode_token(
         self,

@@ -22,6 +22,8 @@ mod env_runtime;
 #[derive(Clone, Copy, Debug, ValueEnum)]
 enum Quantization {
     Bitsandbytes,
+    BitsandbytesNF4,
+    BitsandbytesFP4,
     Gptq,
 }
 
@@ -31,6 +33,12 @@ impl std::fmt::Display for Quantization {
         match self {
             Quantization::Bitsandbytes => {
                 write!(f, "bitsandbytes")
+            }
+            Quantization::BitsandbytesNF4 => {
+                write!(f, "bitsandbytes-nf4")
+            }
+            Quantization::BitsandbytesFP4 => {
+                write!(f, "bitsandbytes-fp4")
             }
             Quantization::Gptq => {
                 write!(f, "gptq")
@@ -55,6 +63,26 @@ impl std::fmt::Display for Dtype {
             }
             Dtype::BFloat16 => {
                 write!(f, "bfloat16")
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum RopeScaling {
+    Linear,
+    Dynamic,
+}
+
+impl std::fmt::Display for RopeScaling {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // To keep in track with `server`.
+        match self {
+            RopeScaling::Linear => {
+                write!(f, "linear")
+            }
+            RopeScaling::Dynamic => {
+                write!(f, "dynamic")
             }
         }
     }
@@ -96,7 +124,8 @@ struct Args {
     num_shard: Option<usize>,
 
     /// Whether you want the model to be quantized. This will use `bitsandbytes` for
-    /// quantization on the fly, or `gptq`.
+    /// quantization on the fly, or `gptq`. 4bit quantization is available through
+    /// `bitsandbytes` by providing the `bitsandbytes-fp4` or `bitsandbytes-nf4` options.
     #[clap(long, env, value_enum)]
     quantize: Option<Quantization>,
 
@@ -184,8 +213,8 @@ struct Args {
     /// depends on other parameters like if you're using quantization, flash attention
     /// or the model implementation, text-generation-inference cannot infer this number
     /// automatically.
-    #[clap(default_value = "16000", long, env)]
-    max_batch_total_tokens: u32,
+    #[clap(long, env)]
+    max_batch_total_tokens: Option<u32>,
 
     /// This setting defines how many tokens can be passed before forcing the waiting
     /// queries to be put on the batch (if the size of the batch allows for it).
@@ -245,6 +274,31 @@ struct Args {
     #[clap(long, env)]
     disable_custom_kernels: bool,
 
+    /// Limit the CUDA available memory.
+    /// The allowed value equals the total visible memory multiplied by cuda-memory-fraction.
+    #[clap(default_value = "1.0", long, env)]
+    cuda_memory_fraction: f32,
+
+    /// Rope scaling will only be used for RoPE models
+    /// and allow rescaling the position rotary to accomodate for
+    /// larger prompts.
+    ///
+    /// Goes together with `rope_factor`.
+    ///
+    /// `--rope-factor 2.0` gives linear scaling with a factor of 2.0
+    /// `--rope-scaling dynamic` gives dynamic scaling with a factor of 1.0
+    /// `--rope-scaling linear` gives linear scaling with a factor of 1.0 (Nothing will be changed
+    /// basically)
+    ///
+    /// `--rope-scaling linear --rope-factor` fully describes the scaling you want
+    #[clap(long, env)]
+    rope_scaling: Option<RopeScaling>,
+
+    /// Rope scaling will only be used for RoPE models
+    /// See `rope_scaling`
+    #[clap(long, env)]
+    rope_factor: Option<f32>,
+
     /// Outputs the logs in JSON format (useful for telemetry)
     #[clap(long, env)]
     json_output: bool,
@@ -267,17 +321,9 @@ struct Args {
     #[clap(long, env)]
     ngrok_authtoken: Option<String>,
 
-    /// ngrok domain name where the axum webserver will be available at
+    /// ngrok edge
     #[clap(long, env)]
-    ngrok_domain: Option<String>,
-
-    /// ngrok basic auth username
-    #[clap(long, env)]
-    ngrok_username: Option<String>,
-
-    /// ngrok basic auth password
-    #[clap(long, env)]
-    ngrok_password: Option<String>,
+    ngrok_edge: Option<String>,
 
     /// Display a lot of information about your runtime environment
     #[clap(long, short, action)]
@@ -307,6 +353,9 @@ fn shard_manager(
     disable_custom_kernels: bool,
     watermark_gamma: Option<f32>,
     watermark_delta: Option<f32>,
+    cuda_memory_fraction: f32,
+    rope_scaling: Option<RopeScaling>,
+    rope_factor: Option<f32>,
     otlp_endpoint: Option<String>,
     status_sender: mpsc::Sender<ShardStatus>,
     shutdown: Arc<AtomicBool>,
@@ -360,6 +409,12 @@ fn shard_manager(
         shard_args.push(revision)
     }
 
+    let rope = match (rope_scaling, rope_factor) {
+        (None, None) => None,
+        (Some(scaling), None) => Some((scaling, 1.0)),
+        (Some(scaling), Some(factor)) => Some((scaling, factor)),
+        (None, Some(factor)) => Some((RopeScaling::Linear, factor)),
+    };
     // OpenTelemetry
     if let Some(otlp_endpoint) = otlp_endpoint {
         shard_args.push("--otlp-endpoint".to_string());
@@ -369,18 +424,18 @@ fn shard_manager(
     // Copy current process env
     let mut envs: Vec<(OsString, OsString)> = env::vars_os().collect();
 
-    // Use cuda allocator. It leads to less memory fragmentation
-    envs.push((
-        "PYTORCH_CUDA_ALLOC_CONF".into(),
-        "backend:cudaMallocAsync".into(),
-    ));
-
     // Torch Distributed Env vars
     envs.push(("RANK".into(), rank.to_string().into()));
     envs.push(("WORLD_SIZE".into(), world_size.to_string().into()));
     envs.push(("MASTER_ADDR".into(), master_addr.into()));
     envs.push(("MASTER_PORT".into(), master_port.to_string().into()));
     envs.push(("NCCL_ASYNC_ERROR_HANDLING".into(), "1".into()));
+
+    // CUDA memory fraction
+    envs.push((
+        "CUDA_MEMORY_FRACTION".into(),
+        cuda_memory_fraction.to_string().into(),
+    ));
 
     // Safetensors load fast
     envs.push(("SAFETENSORS_FAST_GPU".into(), "1".into()));
@@ -396,6 +451,15 @@ fn shard_manager(
     if let Ok(api_token) = env::var("HF_API_TOKEN") {
         envs.push(("HUGGING_FACE_HUB_TOKEN".into(), api_token.into()))
     };
+
+    // Detect rope scaling
+    // Sending as env instead of CLI args to not bloat everything
+    // those only can be used by RoPE models, so passing information around
+    // for all models will complexify code unnecessarily
+    if let Some((scaling, factor)) = rope {
+        envs.push(("ROPE_SCALING".into(), scaling.to_string().into()));
+        envs.push(("ROPE_FACTOR".into(), factor.to_string().into()));
+    }
 
     // If huggingface_hub_cache is some, pass it to the shard
     // Useful when running inside a docker container
@@ -428,7 +492,7 @@ fn shard_manager(
     }
 
     // Start process
-    tracing::info!("Starting shard {rank}");
+    tracing::info!("Starting shard");
     let mut p = match Command::new("text-generation-server")
         .args(shard_args)
         .envs(envs)
@@ -493,17 +557,17 @@ fn shard_manager(
         if shutdown.load(Ordering::SeqCst) {
             p.kill().unwrap();
             let _ = p.wait();
-            tracing::info!("Shard {rank} terminated");
+            tracing::info!("Shard terminated");
             return;
         }
 
         // Shard is ready
         if uds.exists() && !ready {
-            tracing::info!("Shard {rank} ready in {:?}", start_time.elapsed());
+            tracing::info!("Shard ready in {:?}", start_time.elapsed());
             status_sender.send(ShardStatus::Ready).unwrap();
             ready = true;
         } else if !ready && wait_time.elapsed() > Duration::from_secs(10) {
-            tracing::info!("Waiting for shard {rank} to be ready...");
+            tracing::info!("Waiting for shard to be ready...");
             wait_time = Instant::now();
         }
         sleep(Duration::from_millis(100));
@@ -661,6 +725,11 @@ fn download_convert_model(args: &Args, running: Arc<AtomicBool>) -> Result<(), L
         download_args.push(revision.to_string())
     }
 
+    // Trust remote code for automatic peft fusion
+    if args.trust_remote_code {
+        download_args.push("--trust-remote-code".to_string());
+    }
+
     // Copy current process env
     let mut envs: Vec<(OsString, OsString)> = env::vars_os().collect();
 
@@ -785,6 +854,9 @@ fn spawn_shards(
         let disable_custom_kernels = args.disable_custom_kernels;
         let watermark_gamma = args.watermark_gamma;
         let watermark_delta = args.watermark_delta;
+        let cuda_memory_fraction = args.cuda_memory_fraction;
+        let rope_scaling = args.rope_scaling;
+        let rope_factor = args.rope_factor;
         thread::spawn(move || {
             shard_manager(
                 model_id,
@@ -802,6 +874,9 @@ fn spawn_shards(
                 disable_custom_kernels,
                 watermark_gamma,
                 watermark_delta,
+                cuda_memory_fraction,
+                rope_scaling,
+                rope_factor,
                 otlp_endpoint,
                 status_sender,
                 shutdown,
@@ -860,8 +935,6 @@ fn spawn_webserver(
         args.max_total_tokens.to_string(),
         "--max-batch-prefill-tokens".to_string(),
         args.max_batch_prefill_tokens.to_string(),
-        "--max-batch-total-tokens".to_string(),
-        args.max_batch_total_tokens.to_string(),
         "--waiting-served-ratio".to_string(),
         args.waiting_served_ratio.to_string(),
         "--max-waiting-tokens".to_string(),
@@ -877,6 +950,12 @@ fn spawn_webserver(
         "--tokenizer-name".to_string(),
         args.model_id,
     ];
+
+    // Model optional max batch total tokens
+    if let Some(max_batch_total_tokens) = args.max_batch_total_tokens {
+        router_args.push("--max-batch-total-tokens".to_string());
+        router_args.push(max_batch_total_tokens.to_string());
+    }
 
     // Model optional revision
     if let Some(ref revision) = args.revision {
@@ -902,26 +981,11 @@ fn spawn_webserver(
 
     // Ngrok
     if args.ngrok {
-        let authtoken = args.ngrok_authtoken.ok_or_else(|| {
-            tracing::error!("`ngrok-authtoken` must be set when using ngrok tunneling");
-            LauncherError::WebserverCannotStart
-        })?;
-
         router_args.push("--ngrok".to_string());
         router_args.push("--ngrok-authtoken".to_string());
-        router_args.push(authtoken);
-
-        if let Some(domain) = args.ngrok_domain {
-            router_args.push("--ngrok-domain".to_string());
-            router_args.push(domain);
-        }
-
-        if let (Some(username), Some(password)) = (args.ngrok_username, args.ngrok_password) {
-            router_args.push("--ngrok-username".to_string());
-            router_args.push(username);
-            router_args.push("--ngrok-password".to_string());
-            router_args.push(password);
-        }
+        router_args.push(args.ngrok_authtoken.unwrap());
+        router_args.push("--ngrok-edge".to_string());
+        router_args.push(args.ngrok_edge.unwrap());
     }
 
     // Copy current process env
@@ -999,7 +1063,7 @@ fn terminate(process_name: &str, mut process: Child, timeout: Duration) -> io::R
 
 fn main() -> Result<(), LauncherError> {
     // Pattern match configuration
-    let args = Args::parse();
+    let args: Args = Args::parse();
 
     // Filter events with LOG_LEVEL
     let env_filter =
@@ -1036,18 +1100,7 @@ fn main() -> Result<(), LauncherError> {
             args.max_batch_prefill_tokens, args.max_input_length
         )));
     }
-    if args.max_batch_prefill_tokens > args.max_batch_total_tokens {
-        return Err(LauncherError::ArgumentValidation(format!(
-            "`max_batch_prefill_tokens` must be <= `max_batch_total_tokens`. Given: {} and {}",
-            args.max_batch_prefill_tokens, args.max_batch_total_tokens
-        )));
-    }
-    if args.max_total_tokens as u32 > args.max_batch_total_tokens {
-        return Err(LauncherError::ArgumentValidation(format!(
-            "`max_total_tokens` must be <= `max_batch_total_tokens`. Given: {} and {}",
-            args.max_total_tokens, args.max_batch_total_tokens
-        )));
-    }
+
     if args.validation_workers == 0 {
         return Err(LauncherError::ArgumentValidation(
             "`validation_workers` must be > 0".to_string(),
@@ -1063,6 +1116,35 @@ fn main() -> Result<(), LauncherError> {
     let num_shard = find_num_shards(args.sharded, args.num_shard)?;
     if num_shard > 1 {
         tracing::info!("Sharding model on {num_shard} processes");
+    }
+
+    if let Some(ref max_batch_total_tokens) = args.max_batch_total_tokens {
+        if args.max_batch_prefill_tokens > *max_batch_total_tokens {
+            return Err(LauncherError::ArgumentValidation(format!(
+                "`max_batch_prefill_tokens` must be <= `max_batch_total_tokens`. Given: {} and {}",
+                args.max_batch_prefill_tokens, max_batch_total_tokens
+            )));
+        }
+        if args.max_total_tokens as u32 > *max_batch_total_tokens {
+            return Err(LauncherError::ArgumentValidation(format!(
+                "`max_total_tokens` must be <= `max_batch_total_tokens`. Given: {} and {}",
+                args.max_total_tokens, max_batch_total_tokens
+            )));
+        }
+    }
+
+    if args.ngrok {
+        if args.ngrok_authtoken.is_none() {
+            return Err(LauncherError::ArgumentValidation(
+                "`ngrok-authtoken` must be set when using ngrok tunneling".to_string(),
+            ));
+        }
+
+        if args.ngrok_edge.is_none() {
+            return Err(LauncherError::ArgumentValidation(
+                "`ngrok-edge` must be set when using ngrok tunneling".to_string(),
+            ));
+        }
     }
 
     // Signal handler

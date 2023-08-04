@@ -54,10 +54,12 @@ class FlashRWSharded(FlashCausalLM):
             device,
             dtype,
             process_group=self.process_group,
-            aliases={"transformer.word_embeddings.weight": ["lm_head.weight"]},
+            aliases={"lm_head.weight": ["transformer.word_embeddings.weight"]},
         )
 
         config.quantize = quantize
+        if config.quantize == "gptq":
+            weights._set_gptq_params(model_id)
 
         model = FlashRWForCausalLM(config, weights)
 

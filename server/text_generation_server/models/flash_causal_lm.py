@@ -7,7 +7,6 @@ import random
 import numpy as np
 
 from dataclasses import dataclass
-from loguru import logger
 from opentelemetry import trace
 from transformers import PreTrainedTokenizerBase
 from typing import Optional, Tuple, List, Type, Union, Dict
@@ -21,6 +20,7 @@ from text_generation_server.models.types import (
 )
 from text_generation_server.pb import generate_pb2
 from text_generation_server.utils import StoppingCriteria, HeterogeneousNextTokenChooser
+from text_generation_server.utils.dist import MEMORY_FRACTION
 
 tracer = trace.get_tracer(__name__)
 
@@ -40,6 +40,7 @@ class CacheManager:
         device: torch.device,
     ):
         self.block_size = BLOCK_SIZE
+        self.num_blocks = num_blocks
 
         element_size = torch.tensor([], dtype=dtype).element_size()
         x = self.block_size // element_size
@@ -912,14 +913,13 @@ class FlashCausalLM(Model):
     def batch_type(self) -> Type[FlashCausalLMBatch]:
         return FlashCausalLMBatch
 
-    def warmup(self, batch: FlashCausalLMBatch, max_total_tokens: int):
+    def warmup(self, batch: FlashCausalLMBatch):
         global CACHE_MANAGER
 
         torch.cuda.empty_cache()
         try:
             CACHE_MANAGER = CacheManager(
-                # Adds some wiggle room
-                math.ceil(max_total_tokens / BLOCK_SIZE) + 10,
+                batch.blocks,
                 self.num_layers,
                 self.num_kv_heads,
                 self.head_size,
@@ -929,11 +929,45 @@ class FlashCausalLM(Model):
             _, batch = self.generate_token(batch)
         except Exception as e:
             raise RuntimeError(
-                f"Not enough memory to handle {max_total_tokens} total tokens with {len(batch.input_ids)} "
-                f"prefill tokens. "
-                f"You need to decrease `--max-batch-total-tokens` or `--max-batch-prefill-tokens`"
+                f"Not enough memory to handle {len(batch.input_ids)} prefill tokens. "
+                f"You need to decrease `--max-batch-prefill-tokens`"
             ) from e
+
+        torch.cuda.synchronize(self.device)
+
+        # Inspired by the original implementation in [vllm](https://github.com/vllm-project/vllm)
+        # Calculate the number of blocks that can be allocated with the free memory
+        dtype_size = torch.tensor([], dtype=self.dtype).element_size()
+        cache_block_size = BLOCK_SIZE * self.num_kv_heads * self.head_size
+        total_cache_size = self.num_layers * cache_block_size * 2 * dtype_size
+
+        total_free_memory, _ = torch.cuda.mem_get_info(self.device)
+        total_gpu_memory = torch.cuda.get_device_properties(self.device).total_memory
+
+        free_memory = max(
+            0, total_free_memory - (1 - MEMORY_FRACTION) * total_gpu_memory
+        )
+
+        num_blocks = (
+            int(free_memory // total_cache_size)
+            # Add batch.blocks as we allocated it above, so it is included in the peak memory.
+            + CACHE_MANAGER.num_blocks
+        )
+
+        del CACHE_MANAGER
         del batch
+        torch.cuda.empty_cache()
+
+        CACHE_MANAGER = CacheManager(
+            num_blocks,
+            self.num_layers,
+            self.num_kv_heads,
+            self.head_size,
+            self.dtype,
+            self.device,
+        )
+
+        return int(num_blocks * BLOCK_SIZE)
 
     def decode(self, generated_ids: Union[torch.Tensor, List[int]]) -> str:
         return self.tokenizer.decode(
@@ -1193,7 +1227,6 @@ class FlashCausalLM(Model):
 
         if stopped:
             del batch
-            torch.cuda.empty_cache()
             # No need to return a batch if we know that all requests stopped
             return generations, None
 
