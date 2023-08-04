@@ -193,6 +193,12 @@ class FlashCausalLMBatch(Batch):
     ) -> "FlashCausalLMBatch":
         batch_inputs = []
 
+        # we split each sentence into the first max_truncation with a slight difference
+        sentences = [
+            ' '.join(sentence.split(' ')[:max_truncation + random.randint(2*i, 4*i)]) \
+            for i, sentence in enumerate(sentences)
+        ]
+
         batch_tokenized_inputs = tokenizer(
             sentences, truncation=True, max_length=max_truncation
         )["input_ids"]

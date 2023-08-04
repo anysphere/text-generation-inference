@@ -102,7 +102,7 @@ class FlashLlamaGenerator:
 
     def warmup(self, sentence):
         batch = self.full_get_batch(sentence)
-        self.model.warmup(batch, max_total_tokens=20_000)
+        self.model.warmup(batch, max_total_tokens=33_000)
 
 
 def run_experiment(model: FlashLlama, cache: Cache, num_batches = 1, prompt_len=512, gen_size=64, first=False):
@@ -118,13 +118,13 @@ def run_experiment(model: FlashLlama, cache: Cache, num_batches = 1, prompt_len=
     print('Warming up...')
     if first:
         generator.warmup(sentence)
+        return
 
     print('Decoding...')
     for generations in generator.decode(sentence):
         if len(generations) != 0:
             first = generations[0]
-            if first.generated_text != None:
-                print(first.generated_text.text)
+            print(first.token_text, end='')
 
     print()
 
@@ -141,7 +141,18 @@ def main():
 
     cache = Cache()
 
+    prompt_len=15872
+    gen_size=512
+    run_experiment(
+        model=model,
+        cache=cache,
+        num_batches=1,
+        prompt_len=prompt_len,
+        gen_size=gen_size,
+        first = True
+    )
     while True:
+        """
         if (torch.distributed.get_rank() == 0):
             prompt_len = int(input('prompt_len: '))
             gen_size = int(input('gen_size: '))
@@ -154,13 +165,12 @@ def main():
 
         prompt_len = int(data[0].item())
         gen_size = int(data[1].item())
+        """
 
         print(f'prompt_len: {prompt_len}')
         print(f'gen_size: {gen_size}')
-        # prompt_len = 512
-        # gen_size = 64
 
-        for i, batch_size in enumerate([1, 2, 4]):
+        for i, batch_size in enumerate([1, 2]):
             print(f'batch_size: {batch_size}')
             run_experiment(
                 model=model,
@@ -168,7 +178,7 @@ def main():
                 num_batches=batch_size,
                 prompt_len=prompt_len,
                 gen_size=gen_size,
-                first = i == 0,
+                first = False
             )
 
 main()

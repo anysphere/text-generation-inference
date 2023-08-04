@@ -156,3 +156,5 @@ cython_debug/
 
 transformers
 safetensors
+
+flash-attention-v2/
